@@ -96,16 +96,10 @@ body { font-family: 'IBM Plex Sans', sans-serif; background: var(--bg); color: v
 .clearance-warn  { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
 .clearance-hold  { border-color: var(--red); color: var(--red); background: var(--red-bg); }
 
-/* ── Sheets panels ── */
-.sheets-setup { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-lg); padding: 12px 14px; margin-bottom: 1.5rem; font-size: 13px; color: var(--text2); }
-.sheets-setup b { color: var(--accent); font-weight: 600; }
-.sheets-input-row { display: flex; gap: 8px; margin-top: 10px; }
-.sheets-input-row input { flex: 1; font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--border2); border-radius: var(--radius); padding: 7px 10px; background: var(--bg); color: var(--text); outline: none; }
-.sheets-input-row input:focus { border-color: var(--accent); }
-.sheets-input-row button { padding: 7px 14px; background: var(--accent-dim); color: var(--text); border: 1px solid var(--accent-dim); border-radius: var(--radius); font-family: var(--font-mono); font-size: 11px; cursor: pointer; white-space: nowrap; letter-spacing: 0.05em; }
-.sheets-input-row button:hover { background: var(--accent); color: #000; }
-.sheets-connected { display: flex; align-items: center; justify-content: space-between; background: var(--accent-bg); border: 1px solid var(--accent-dim); border-radius: var(--radius-lg); padding: 10px 14px; margin-bottom: 1.5rem; font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
-.sheets-connected a { color: var(--text3); font-size: 10px; cursor: pointer; text-decoration: underline; }
+/* ── Export panel ── */
+.export-panel { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-lg); padding: 12px 14px; margin-bottom: 1.5rem; font-size: 13px; color: var(--text2); }
+.export-panel b { color: var(--accent); font-weight: 600; }
+.export-connected { display: flex; align-items: center; justify-content: space-between; background: var(--accent-bg); border: 1px solid var(--accent-dim); border-radius: var(--radius-lg); padding: 10px 14px; margin-bottom: 1.5rem; font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
 
 /* ── KPI grid ── */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 1.5rem; }
@@ -248,18 +242,16 @@ body::after {
     <div id="overall-badge" class="clearance-badge clearance-go">FIELD READY</div>
   </div>
 
-  <!-- Sheets setup -->
-  <div id="sheets-setup-panel" class="sheets-setup" style="display:none;">
-    <b>LINK HANDLER CHANNEL</b> — paste Google Sheet ID to enable encrypted daily transmission.<br>
-    <small style="display:block;margin-top:4px;opacity:0.6;">docs.google.com/spreadsheets/d/<b>THIS_PART</b>/edit — handler will see all daily stats</small>
-    <div class="sheets-input-row">
-      <input type="text" id="sheet-id-input" placeholder="Sheet ID">
-      <button onclick="connectSheet()">LINK</button>
+  <!-- Export -->
+  <div id="export-panel" class="export-panel" style="display:none;">
+    <b>EXPORT OPTIONS</b><br>
+    <small style="display:block;margin-top:4px;opacity:0.7;">Download today's row as CSV and paste into your Google Sheet. Or copy raw data to clipboard.</small>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+      <button class="log-btn" style="margin:0;padding:7px 14px;font-size:10px;" onclick="downloadCSV()">↓ DOWNLOAD CSV ROW</button>
+      <button class="log-btn" style="margin:0;padding:7px 14px;font-size:10px;" onclick="copyTSV()">⊡ COPY FOR SHEETS PASTE</button>
+      <button class="log-btn" style="margin:0;padding:7px 14px;font-size:10px;" onclick="downloadHeaders()">↓ DOWNLOAD HEADERS ROW</button>
     </div>
-  </div>
-  <div id="sheets-connected-panel" class="sheets-connected" style="display:none;">
-    <span>▶ HANDLER CHANNEL ACTIVE — daily transmissions enabled</span>
-    <a onclick="disconnectSheet()">disconnect</a>
+    <div id="export-status" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--accent);min-height:14px;"></div>
   </div>
 
   <!-- KPIs -->
@@ -288,6 +280,7 @@ body::after {
       </div>
     </div>
     <div class="pimsleur-body" id="pimsleur-body">
+      <div id="p-next-banner" style="display:none;margin-bottom:10px;padding:8px 12px;background:rgba(122,182,72,0.1);border:1px solid var(--accent-dim);border-radius:var(--radius);font-family:var(--font-mono);font-size:11px;color:var(--accent);letter-spacing:0.05em;"></div>
       <div class="pimsleur-stats">
         <span>Completed: <b id="p-done">0</b> lessons</span>
         <span>Remaining: <b id="p-left">150</b></span>
@@ -329,7 +322,11 @@ body::after {
           <div class="range-label">Rating: <b id="conf-val">5</b> / 10</div>
         </div>
       </div>
-      <button class="log-btn" id="save-btn" onclick="saveLog()">TRANSMIT DAILY REPORT →</button>
+      <button class="log-btn" id="save-btn" onclick="saveLog()">SAVE &amp; PREPARE EXPORT →</button>
+      <div style="margin-top:10px;">
+        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;">Field notes — context for handler (optional)</div>
+        <textarea id="log-notes" placeholder="e.g. Missed cardio — travelling. Pimsleur done on commute." style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 10px;font-family:var(--font-mono);font-size:12px;color:var(--text);resize:vertical;min-height:60px;outline:none;line-height:1.5;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'"></textarea>
+      </div>
       <div class="sync-status" id="sync-status"></div>
     </div>
   </div>
@@ -347,6 +344,12 @@ body::after {
     <div class="verdict" id="verdict-text"></div>
   </div>
 
+  <!-- Weekly check-in -->
+  <div class="punishment-panel" id="weekly-panel" style="margin-top:1rem;">
+    <div class="section-label" style="border:none;margin:0 0 8px;padding:0;">Weekly check-in — rolling 7-day average</div>
+    <div id="weekly-content"></div>
+  </div>
+
   <!-- Remedial orders -->
   <div class="punishment-panel">
     <div class="section-label" style="border:none;margin:0 0 8px;padding:0;">Remedial orders — handler review</div>
@@ -355,7 +358,7 @@ body::after {
   </div>
 
   <div class="footer-actions">
-    <span onclick="setupSheets()">⊞ HANDLER CHANNEL SETTINGS</span>
+    <span onclick="toggleExport()">⊞ EXPORT / HANDLER CHANNEL</span>
     <span onclick="resetConfirm()">RESET TODAY</span>
   </div>
 
@@ -443,7 +446,7 @@ const SHEET_HEADERS = [
   'Arm Workout','Push-ups','Protein','Stretch',
   'Called Someone','Said Hello','Assertive','New Connection',
   'Pimsleur Done','Reviewed Lesson','Reading Session',
-  'Remedial Order',
+  'Remedial Order', 'Notes',
 ];
 
 // ── State ─────────────────────────────────────────────────────────────────
@@ -522,6 +525,18 @@ function renderPimsleur() {
   document.getElementById('p-done').textContent = done;
   document.getElementById('p-left').textContent = PIMSLEUR_TOTAL-done;
 
+  // Next lesson banner
+  const nextLesson = getNextLesson();
+  const banner = document.getElementById('p-next-banner');
+  if (nextLesson) {
+    const ph = PIMSLEUR_PHASES.find(p=>nextLesson>=p.start&&nextLesson<p.start+p.lessons);
+    banner.style.display='block';
+    banner.textContent='▶ NEXT LESSON DUE: Lesson '+nextLesson+(ph?' — '+ph.label:'');
+  } else {
+    banner.style.display='block';
+    banner.textContent='✓ ALL 150 LESSONS COMPLETE — MANDARIN PROGRAMME FINISHED';
+  }
+
   // Current phase
   let phase='V';
   for (let i=0;i<PIMSLEUR_PHASES.length;i++) {
@@ -557,43 +572,10 @@ function renderPimsleur() {
   });
 }
 
-// ── Google Sheets sync ─────────────────────────────────────────────────────
-async function appendRowToSheet(sheetId, row) {
-  const headersLine = SHEET_HEADERS.join(', ');
-  const dataLine = row.map(v=>v===''?'(blank)':v).join(' | ');
+// ── CSV / TSV export ──────────────────────────────────────────────────────
+let lastRow = []; // populated on save, used by export buttons
 
-  const prompt = `You have access to Google Drive MCP tools which include Google Sheets access.
-
-Task: Append data to Google Sheets spreadsheet ID: "${sheetId}"
-
-Step 1 — Check if the sheet has headers in row 1.
-Step 2 — If empty, write these headers first:
-${headersLine}
-Step 3 — Append this data as the next available row (pipe-separated):
-${dataLine}
-
-Columns map in order to the headers. Empty/blank = empty cell.
-Respond ONLY with "SYNCED" on success or "ERROR: [reason]" on failure.`;
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      model:"claude-sonnet-4-20250514",
-      max_tokens:1000,
-      messages:[{role:"user",content:prompt}],
-      mcp_servers:[{type:"url",url:"https://drivemcp.googleapis.com/mcp/v1",name:"google-drive-mcp"}]
-    })
-  });
-  if (!response.ok) throw new Error('API '+response.status);
-  const data = await response.json();
-  const text = data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
-  if (text.includes('ERROR')) throw new Error(text.replace('ERROR:','').trim());
-  return true;
-}
-
-// ── Save log ───────────────────────────────────────────────────────────────
-async function saveLog() {
+function buildRow() {
   const cals   = document.getElementById('log-cals').value||'';
   const steps  = document.getElementById('log-steps').value||'';
   const weight = document.getElementById('log-weight').value||'';
@@ -601,17 +583,16 @@ async function saveLog() {
   const cardio = document.getElementById('log-cardio').value||'';
   const look   = document.getElementById('log-look').value;
   const conf   = document.getElementById('log-conf').value;
+  const notes  = document.getElementById('log-notes').value.trim()||'';
   const today  = todayStr();
   const score  = getScore();
   const done   = getTasksDone();
   const total  = DEPTS.flatMap(d=>d.tasks).length;
   const pDone  = getPimsleurDone();
-
   const taskFlags = DEPTS.flatMap(d=>d.tasks.map(t=>state.checked[t.id]?1:0));
   const deptScores = DEPTS.map(d=>getDeptScore(d));
   const remedial = getActiveRemedial(score);
-
-  const row = [
+  return [
     today, score, done, total,
     cals, steps, weight, muscle, cardio,
     look, conf, state.streak,
@@ -619,36 +600,151 @@ async function saveLog() {
     ...deptScores,
     ...taskFlags,
     remedial.label,
+    notes,
   ];
+}
+
+function escapeCSV(v) {
+  const s = String(v===null||v===undefined?'':v);
+  return s.includes(',')||s.includes('"')||s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+
+function downloadCSV() {
+  if (!lastRow.length) { alert('Save a daily report first.'); return; }
+  const csv = SHEET_HEADERS.map(escapeCSV).join(',')+'\n'+lastRow.map(escapeCSV).join(',');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'field-report-'+todayStr()+'.csv';
+  a.click();
+  document.getElementById('export-status').textContent = '↓ Downloaded — open your Google Sheet and paste into the next empty row.';
+}
+
+function downloadHeaders() {
+  const csv = SHEET_HEADERS.map(escapeCSV).join(',');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'field-report-HEADERS.csv';
+  a.click();
+  document.getElementById('export-status').textContent = '↓ Headers downloaded — paste into row 1 of your Google Sheet once.';
+}
+
+function copyTSV() {
+  if (!lastRow.length) { alert('Save a daily report first.'); return; }
+  // Tab-separated so it pastes cleanly into Sheets as separate cells
+  const tsv = lastRow.map(v=>String(v===null||v===undefined?'':v)).join('\t');
+  navigator.clipboard.writeText(tsv).then(()=>{
+    document.getElementById('export-status').textContent = '⊡ Copied — click the next empty row in your Google Sheet and paste (Ctrl+V / Cmd+V).';
+  }).catch(()=>{
+    // Fallback: show in prompt so user can copy manually
+    prompt('Copy this row and paste into your Google Sheet:', tsv);
+  });
+}
+
+function toggleExport() {
+  const p = document.getElementById('export-panel');
+  p.style.display = (p.style.display==='none'||!p.style.display) ? 'block' : 'none';
+}
+
+// ── Save log ───────────────────────────────────────────────────────────────
+function saveLog() {
+  const cals   = document.getElementById('log-cals').value||'';
+  const steps  = document.getElementById('log-steps').value||'';
+  const weight = document.getElementById('log-weight').value||'';
+  const muscle = document.getElementById('log-muscle-pct').value||'';
+  const cardio = document.getElementById('log-cardio').value||'';
+  const look   = document.getElementById('log-look').value;
+  const conf   = document.getElementById('log-conf').value;
+  const notes  = document.getElementById('log-notes').value.trim()||'';
+  const today  = todayStr();
+  const score  = getScore();
+  const done   = getTasksDone();
+  const pDone  = getPimsleurDone();
+
+  lastRow = buildRow();
 
   state.logs = state.logs||[];
-  state.logs.push({date:today,score,done,calories:cals,steps,weight,musclePct:muscle,cardio,look:parseInt(look),conf:parseInt(conf),pimsleur:pDone});
+  state.logs.push({date:today,score,done,calories:cals,steps,weight,musclePct:muscle,cardio,look:parseInt(look),conf:parseInt(conf),pimsleur:pDone,notes});
   if (state.lastLogDate!==today) { state.streak=(state.streak||0)+1; state.lastLogDate=today; }
   saveState();
 
   const statusEl = document.getElementById('sync-status');
-  const btn = document.getElementById('save-btn');
+  statusEl.className='sync-status ok';
+  statusEl.textContent='▶ REPORT SAVED — use ⊞ Export / Handler Channel below to send to handler.';
 
-  if (state.sheetId) {
-    btn.disabled=true; btn.textContent='TRANSMITTING...';
-    statusEl.className='sync-status'; statusEl.textContent='Writing to handler channel...';
-    try {
-      await appendRowToSheet(state.sheetId,row);
-      statusEl.className='sync-status ok';
-      statusEl.textContent='▶ TRANSMITTED — '+new Date().toLocaleTimeString()+' — handler will review';
-    } catch(e) {
-      statusEl.className='sync-status err';
-      statusEl.textContent='TRANSMISSION FAILED: '+e.message+' — saved locally';
-    }
-    btn.disabled=false; btn.textContent='TRANSMIT DAILY REPORT →';
-  } else {
-    statusEl.className='sync-status';
-    statusEl.textContent='Saved locally. Link handler channel in settings to transmit.';
-  }
+  // Auto-open export panel
+  document.getElementById('export-panel').style.display='block';
+  document.getElementById('export-status').textContent='';
+  document.getElementById('log-notes').value='';
   render();
 }
 
-// ── Fit Profile import ─────────────────────────────────────────────────────
+
+// ── Next lesson indicator ─────────────────────────────────────────────────
+function getNextLesson() {
+  for (let i=1; i<=PIMSLEUR_TOTAL; i++) {
+    if (!state.pimsleur[i]) return i;
+  }
+  return null;
+}
+
+// ── Weekly check-in ───────────────────────────────────────────────────────
+function renderWeekly() {
+  const el = document.getElementById('weekly-content');
+  const logs = (state.logs||[]).slice(-7); // last 7 logged days
+
+  if (logs.length === 0) {
+    el.innerHTML = '<div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:4px 0;">No logs yet. Complete and transmit your first daily report.</div>';
+    return;
+  }
+
+  const avgScore = Math.round(logs.reduce((a,l)=>a+(l.score||0),0)/logs.length);
+  const avgLook  = (logs.reduce((a,l)=>a+(l.look||0),0)/logs.length).toFixed(1);
+  const avgConf  = (logs.reduce((a,l)=>a+(l.conf||0),0)/logs.length).toFixed(1);
+  const totalDone = logs.reduce((a,l)=>a+(l.done||0),0);
+  const daysLogged = logs.length;
+  const weekRemedial = getActiveRemedial(avgScore);
+
+  const scoreColor = avgScore>=75?'var(--accent)':avgScore>=50?'var(--amber)':'var(--red)';
+
+  // Day-by-day mini bars
+  const dayBars = logs.map(l=>{
+    const c = (l.score||0)>=75?'#7ab648':(l.score||0)>=50?'#c89040':'#c84040';
+    const d = new Date(l.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short'});
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
+      <div style="width:100%;height:40px;background:var(--surface3);border-radius:3px;overflow:hidden;display:flex;align-items:flex-end;">
+        <div style="width:100%;height:${l.score||0}%;background:${c};transition:height 0.4s;"></div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">${d}</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:${c};">${l.score||0}%</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;gap:1rem;margin-bottom:12px;flex-wrap:wrap;">
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">
+        7-day avg<br><span style="font-size:22px;color:${scoreColor};">${avgScore}%</span>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">
+        Days logged<br><span style="font-size:22px;color:var(--text2);">${daysLogged}</span>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">
+        Avg look<br><span style="font-size:22px;color:var(--text2);">${avgLook}</span>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">
+        Avg confidence<br><span style="font-size:22px;color:var(--text2);">${avgConf}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:4px;margin-bottom:12px;align-items:flex-end;">${dayBars}</div>
+    <div style="font-family:var(--font-mono);font-size:10px;padding:7px 10px;border-radius:var(--radius);border:1px solid ${scoreColor}44;color:${scoreColor};">
+      WEEKLY VERDICT: ${weekRemedial.label} — ${weekRemedial.desc}
+    </div>
+    ${logs[logs.length-1]&&logs[logs.length-1].notes?`<div style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--text3);border-top:1px solid var(--border);padding-top:8px;">Last note: ${logs[logs.length-1].notes}</div>`:''}
+  `;
+}
+
+
 function parseFitProfile() {
   const raw = prompt('Paste your Fit Profile data (any format). App will extract weight and muscle mass %.\n\nOr type manually: Weight: 185.2, Muscle: 38.4%');
   if (!raw) return;
@@ -659,22 +755,6 @@ function parseFitProfile() {
   if (muscleMatch) { document.getElementById('log-muscle-pct').value=parseFloat(muscleMatch[1]).toFixed(1); found.push('muscle: '+muscleMatch[1]+'%'); }
   if (found.length) alert('IMPORTED — '+found.join(', ')+'\n\nVerify fields before transmitting.');
   else alert("Could not parse. Try: Weight: 185, Muscle: 38.4%\nOr fill fields manually.");
-}
-
-// ── Sheets connection ──────────────────────────────────────────────────────
-function connectSheet() {
-  const id=document.getElementById('sheet-id-input').value.trim();
-  if (!id) return;
-  state.sheetId=id; saveState(); renderSheetsPanel();
-}
-function disconnectSheet() { state.sheetId=null; saveState(); renderSheetsPanel(); }
-function setupSheets() {
-  const p=document.getElementById('sheets-setup-panel');
-  p.style.display=(p.style.display==='none'||!p.style.display)?'block':'none';
-}
-function renderSheetsPanel() {
-  document.getElementById('sheets-setup-panel').style.display=state.sheetId?'none':'block';
-  document.getElementById('sheets-connected-panel').style.display=state.sheetId?'flex':'none';
 }
 
 // ── Punishments ────────────────────────────────────────────────────────────
@@ -727,6 +807,7 @@ function render() {
 
   renderPunishments(score);
   renderPimsleur();
+  renderWeekly();
 
   const openDepts={};
   document.querySelectorAll('.task-list.open').forEach(el=>{openDepts[el.id]=true;});
@@ -797,7 +878,6 @@ function resetConfirm() {
 document.getElementById('log-look').addEventListener('input',function(){document.getElementById('look-val').textContent=this.value;});
 document.getElementById('log-conf').addEventListener('input',function(){document.getElementById('conf-val').textContent=this.value;});
 
-renderSheetsPanel();
 render();
 </script>
 </body>
